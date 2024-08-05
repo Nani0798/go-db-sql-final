@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 )
 
 type ParcelStore struct {
@@ -13,48 +14,79 @@ func NewParcelStore(db *sql.DB) ParcelStore {
 }
 
 func (s ParcelStore) Add(p Parcel) (int, error) {
-	// реализуйте добавление строки в таблицу parcel, используйте данные из переменной p
+	const query = "INSERT INTO parcel (client, status, address, created_at) VALUES(?, ?, ?, ?) returning number;"
 
-	// верните идентификатор последней добавленной записи
-	return 0, nil
+	var id int
+	if err := s.db.QueryRow(query, p.Client, p.Status, p.Address, p.CreatedAt).Scan(&id); err != nil {
+		return 0, fmt.Errorf("query row: %w", err)
+	}
+
+	return id, nil
 }
 
 func (s ParcelStore) Get(number int) (Parcel, error) {
-	// реализуйте чтение строки по заданному number
-	// здесь из таблицы должна вернуться только одна строка
+	const query = "select number, client, status, address, created_at from parcel where number = ?"
 
-	// заполните объект Parcel данными из таблицы
 	p := Parcel{}
+	if err := s.db.QueryRow(query, number).Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt); err != nil {
+		return Parcel{}, fmt.Errorf("query row: %w", err)
+	}
 
 	return p, nil
 }
 
 func (s ParcelStore) GetByClient(client int) ([]Parcel, error) {
-	// реализуйте чтение строк из таблицы parcel по заданному client
-	// здесь из таблицы может вернуться несколько строк
+	const query = "select number, client, status, address, created_at from parcel where client = ?"
 
-	// заполните срез Parcel данными из таблицы
-	var res []Parcel
+	rows, err := s.db.Query(query, client)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
+	}
+	defer rows.Close()
 
-	return res, nil
+	var list []Parcel
+	for rows.Next() {
+		p := Parcel{}
+		if err := rows.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+
+		list = append(list, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows read: %w", err)
+	}
+
+	return list, nil
 }
 
 func (s ParcelStore) SetStatus(number int, status string) error {
-	// реализуйте обновление статуса в таблице parcel
+	const query = "update parcel set status = ? where number = ?"
+
+	if _, err := s.db.Exec(query, status, number); err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
 
 	return nil
 }
 
 func (s ParcelStore) SetAddress(number int, address string) error {
-	// реализуйте обновление адреса в таблице parcel
-	// менять адрес можно только если значение статуса registered
+	const query = "update parcel set address = ? where status = ? and number = ?"
+
+	if _, err := s.db.Exec(query, address, ParcelStatusRegistered, number); err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
 
 	return nil
 }
 
 func (s ParcelStore) Delete(number int) error {
-	// реализуйте удаление строки из таблицы parcel
-	// удалять строку можно только если значение статуса registered
+	const query = "delete from parcel where status = ? and number = ?"
+
+	if _, err := s.db.Exec(query, ParcelStatusRegistered, number); err != nil {
+		return fmt.Errorf("exec: %w", err)
+	}
 
 	return nil
 }
