@@ -72,9 +72,9 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 }
 
 func (s ParcelStore) SetAddress(number int, address string) error {
-	const query = "update parcel set address = ? where status = 'registered' and number = ?"
+	const query = "update parcel set address = ? where status = ? and number = ?"
 
-	if _, err := s.db.Exec(query, address, number); err != nil {
+	if _, err := s.db.Exec(query, address, ParcelStatusRegistered, number); err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
 
@@ -82,11 +82,11 @@ func (s ParcelStore) SetAddress(number int, address string) error {
 }
 
 func (s ParcelStore) Delete(number int) error {
-	const query = "delete from parcel where status = 'registered' and number = ?"
+	const query = "delete from parcel where status = ? and number = ?"
 
-	if _, err := s.db.Exec(query, number); err != nil {
+	if _, err := s.db.Exec(query, ParcelStatusRegistered, number); err != nil {
 		return fmt.Errorf("exec: %w", err)
 	}
-	
+
 	return nil
 }
